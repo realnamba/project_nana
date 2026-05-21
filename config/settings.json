@@ -1,0 +1,10 @@
+{
+  "defaultModelPath": "qwen2.5/qwen2.5-3b.gguf",
+  "lastLoadedModel": "qwen2.5/qwen2.5-3b.gguf",
+  "autoScanModels": true,
+  "contextSize": 4096,
+  "maxNewTokens": 512,
+  "chatHistoryLimit": 6,
+  "personaEnabled": true,
+  "memoryEnabled": true
+}

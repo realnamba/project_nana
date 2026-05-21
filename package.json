@@ -1,0 +1,57 @@
+{
+  "name": "nana",
+  "version": "1.0.0",
+  "description": "Local AI assistant with GGUF models (llama.cpp)",
+  "main": "main.js",
+  "scripts": {
+    "desktop:dev": "electron .",
+    "desktop:build": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.nana.localai",
+    "productName": "Nana",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "portable",
+      "icon": "logo/icon.ico"
+    },
+    "portable": {
+      "artifactName": "Nana.exe"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "extraFiles": [
+      {
+        "from": "backend",
+        "to": "backend",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**",
+          "!**/*.pyc",
+          "!venv/Lib/site-packages/pip/**",
+          "!venv/Lib/site-packages/pip-*/**",
+          "!venv/Lib/site-packages/setuptools/**",
+          "!venv/Lib/site-packages/setuptools-*/**",
+          "!models/**"
+        ]
+      },
+      {
+        "from": "frontend",
+        "to": "frontend"
+      },
+      {
+        "from": "config",
+        "to": "config"
+      }
+    ]
+  },
+  "devDependencies": {
+    "electron": "^42.2.0",
+    "electron-builder": "^26.8.1"
+  }
+}

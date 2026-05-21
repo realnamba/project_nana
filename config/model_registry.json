@@ -1,0 +1,69 @@
+[
+  {
+    "id": "minicpm-v/minicpm-v.gguf",
+    "relativePath": "minicpm-v/minicpm-v.gguf",
+    "fileName": "minicpm-v.gguf",
+    "displayName": "MiniCPM-V Vision",
+    "filePath": "C:\\Users\\LENOV\\Documents\\porto raka\\web\\project nana\\models\\minicpm-v\\minicpm-v.gguf",
+    "size": 5725514496,
+    "modelType": "vision",
+    "quantization": "unknown",
+    "lastModified": "2026-05-20T02:33:44.259829+00:00",
+    "available": true,
+    "status": "ready",
+    "visionSetupRequired": false,
+    "loaded": false,
+    "runtime": "standalone",
+    "packagePath": "minicpm-v/",
+    "mainModelPath": "minicpm-v/minicpm-v.gguf",
+    "main_model_path": "C:\\Users\\LENOV\\Documents\\porto raka\\web\\project nana\\models\\minicpm-v\\minicpm-v.gguf",
+    "mmprojPath": "minicpm-v/mmproj.gguf",
+    "mmproj_path": "C:\\Users\\LENOV\\Documents\\porto raka\\web\\project nana\\models\\minicpm-v\\mmproj.gguf",
+    "files": [
+      {
+        "role": "main",
+        "relativePath": "minicpm-v/minicpm-v.gguf",
+        "filePath": "C:\\Users\\LENOV\\Documents\\porto raka\\web\\project nana\\models\\minicpm-v\\minicpm-v.gguf",
+        "size": 4681089344
+      },
+      {
+        "role": "mmproj",
+        "relativePath": "minicpm-v/mmproj.gguf",
+        "filePath": "C:\\Users\\LENOV\\Documents\\porto raka\\web\\project nana\\models\\minicpm-v\\mmproj.gguf",
+        "size": 1044425152
+      }
+    ]
+  },
+  {
+    "id": "qwen2.5-coder-7b/qwen2.5-coder-7b.gguf",
+    "relativePath": "qwen2.5-coder-7b/qwen2.5-coder-7b.gguf",
+    "fileName": "qwen2.5-coder-7b.gguf",
+    "displayName": "qwen2.5-coder-7b / qwen2.5-coder-7b",
+    "filePath": "C:\\Users\\LENOV\\Documents\\porto raka\\web\\project nana\\models\\qwen2.5-coder-7b\\qwen2.5-coder-7b.gguf",
+    "size": 4683073536,
+    "modelType": "code",
+    "quantization": "unknown",
+    "lastModified": "2026-05-19T16:56:08.289357+00:00",
+    "available": true,
+    "status": "ready",
+    "visionSetupRequired": false,
+    "loaded": false,
+    "runtime": "standalone"
+  },
+  {
+    "id": "qwen2.5/qwen2.5-3b.gguf",
+    "relativePath": "qwen2.5/qwen2.5-3b.gguf",
+    "fileName": "qwen2.5-3b.gguf",
+    "displayName": "qwen2.5 / qwen2.5-3b",
+    "filePath": "C:\\Users\\LENOV\\Documents\\porto raka\\web\\project nana\\models\\qwen2.5\\qwen2.5-3b.gguf",
+    "size": 2104932768,
+    "modelType": "chat",
+    "quantization": "unknown",
+    "lastModified": "2026-05-19T15:59:49.145807+00:00",
+    "available": true,
+    "status": "ready",
+    "visionSetupRequired": false,
+    "loaded": false,
+    "runtime": "standalone"
+  }
+]

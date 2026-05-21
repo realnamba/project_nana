@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nana — Local AI Assistant</title>
+    <meta name="description" content="Local AI desktop assistant — GGUF models on your machine">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles/main.css">
+</head>
+<body>
+    <div class="app" id="app">
+        <!-- ─── Sidebar ────────────────────────────────────────── -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header" style="display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 12px; border-bottom: 1px solid var(--surface-border);">
+                <div class="logo">
+                    <span class="logo-text">Nana</span>
+                </div>
+                <button class="btn-toggle-sidebar" id="btnToggleSidebar" title="Collapse sidebar" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: var(--radius-sm); transition: all 0.2s;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                </button>
+            </div>
+            <!-- Sidebar Actions (New Chat, Search Chats, Workspace, Models) -->
+            <div class="sidebar-actions" style="padding: 12px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--surface-border);">
+                <button class="btn-new-chat-row" id="btnNewChat" title="New Chat">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <span>New Chat</span>
+                </button>
+                <div class="search-chats-container" id="searchChatsContainer" title="Search Chats">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="searchChatsInput" placeholder="Search Chats..." autocomplete="off">
+                </div>
+                <button class="btn-toggle-workspace" id="btnToggleWorkspace" title="Toggle Workspace">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                    <span>Workspace</span>
+                </button>
+                <button type="button" class="btn-toggle-station" id="btnToggleStation" title="Station — AI Council">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span>Station</span>
+                </button>
+                <button type="button" class="btn-toggle-models" id="btnToggleModels" title="Model manager">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                    <span>Models</span>
+                </button>
+                <button type="button" class="btn-toggle-settings" id="btnToggleSettings" title="Settings">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <span>Settings</span>
+                </button>
+            </div>
+            <div class="sidebar-conversations" id="conversationList">
+                <!-- Populated by JS -->
+            </div>
+            <div class="sidebar-footer">
+                <div class="status-indicator" id="statusIndicator">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Checking...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ─── Main Chat Area ─────────────────────────────────── -->
+        <main class="chat-area">
+            <header class="chat-header">
+                <h1 class="chat-title" id="chatTitle">New Chat</h1>
+            </header>
+
+            <div id="noModelBanner" class="no-model-banner hidden" role="status">
+                <span class="no-model-banner-text">No local model found. Put a .gguf model file inside the <code>models</code> folder, then click <strong>Rescan Models</strong> in the Model manager.</span>
+            </div>
+
+            <!-- Messages -->
+            <div class="messages-container" id="messagesContainer">
+                <div class="messages" id="messages">
+                    <!-- Welcome message -->
+                    <div class="welcome-screen" id="welcomeScreen">
+                        <h2>Hello! I'm Nana</h2>
+                        <p>Your local AI assistant. I can help with coding, analyze screenshots, and answer questions — all running on your machine.</p>
+                        <div class="welcome-cards">
+                            <button class="welcome-card" onclick="setPrompt('Help me debug this code')">
+                                <span class="card-icon">🐛</span>
+                                <span>Debug code</span>
+                            </button>
+                            <button class="welcome-card" onclick="setPrompt('Explain this concept')">
+                                <span class="card-icon">💡</span>
+                                <span>Explain concept</span>
+                            </button>
+                            <button class="welcome-card" onclick="captureAndSend()">
+                                <span class="card-icon">📸</span>
+                                <span>Capture screen</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input area -->
+            <div class="input-area">
+                <div class="composer-card">
+                    <!-- Screenshot preview -->
+                    <div class="screenshot-preview" id="screenshotPreview" style="display:none;">
+                        <img id="screenshotImage" alt="Screenshot preview">
+                        <button class="btn-remove-screenshot" id="btnRemoveScreenshot" title="Remove">✕</button>
+                    </div>
+
+                    <!-- Top Row -->
+                    <div class="composer-top-row">
+                        <textarea
+                            id="messageInput"
+                            placeholder="Ask Nana anything..."
+                            rows="1"
+                            autofocus
+                        ></textarea>
+                    </div>
+
+                    <!-- Bottom Row -->
+                    <div class="composer-bottom-row">
+                        <div class="composer-tools-left">
+                            <label class="btn-tool" title="Upload Image">
+                                <input type="file" id="imageInput" accept="image/*" style="display:none;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            </label>
+                            <div class="custom-model-select" id="customModelSelect">
+                                <button type="button" class="btn-model-select" id="btnModelSelect">
+                                    <span id="selectedModelText">No model</span>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                </button>
+                                <div class="model-picker-popover hidden" id="modelPickerPopover">
+                                    <div class="model-picker-search">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                        <input type="text" id="modelSearchInput" placeholder="Find model..." autocomplete="off">
+                                    </div>
+                                    <div class="model-picker-list" id="modelPickerList">
+                                        <!-- populated by js -->
+                                    </div>
+                                    <div class="model-picker-footer" style="padding: 8px; border-top: 1px solid rgba(255,255,255,0.05);">
+                                        <label class="btn-import-model" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px; background: rgba(255,255,255,0.05); border-radius: 4px; cursor: pointer; font-size: 12px; color: var(--text-primary); transition: all 0.2s;">
+                                            <input type="file" id="ggufInput" accept=".gguf" style="display:none;">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                            Import .gguf (copy to models folder)
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="composer-tools-right">
+                            <button class="btn-send" id="btnSend" title="Send (Enter)">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <p class="input-hint">Press Enter to send · Shift+Enter for new line · Ctrl+V to paste image</p>
+            </div>
+        </main>
+
+        <!-- ─── Workspace Panel (VS Code style split editor) ────────────────── -->
+        <aside class="workspace-panel hidden" id="workspacePanel">
+            <div class="workspace-header">
+                <div class="workspace-title-section" id="workspaceTitleSection" style="position: relative; display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background 0.2s;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                    <span id="workspaceName" style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px;">No Project</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-muted);"><polyline points="6 9 12 15 18 9"/></svg>
+                    
+                    <div class="recent-projects-popover hidden" id="recentProjectsPopover" style="position: absolute; top: 40px; left: 0; z-index: 100; background: #191927; border: 1px solid var(--surface-border); border-radius: var(--radius-md); box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); width: 280px; padding: 8px; display: flex; flex-direction: column; gap: 4px; text-align: left;">
+                        <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); padding: 4px 8px; text-transform: uppercase; letter-spacing: 0.05em;">Recent Projects</div>
+                        <div id="popoverRecentProjectsList" style="display: flex; flex-direction: column; gap: 2px; max-height: 200px; overflow-y: auto;">
+                            <!-- Filled dynamically -->
+                        </div>
+                        <div style="border-top: 1px solid var(--surface-border); margin-top: 4px; padding-top: 4px;">
+                            <button id="btnPopoverCloseWorkspace" style="width: 100%; text-align: left; background: transparent; border: none; color: var(--error); padding: 6px 8px; font-size: 12px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 6px; transition: background 0.2s;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+                                Close Workspace (No Project)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="workspace-actions" style="display: flex; align-items: center; gap: 8px;">
+                    <button id="btnOpenFolder" title="Open Folder" class="workspace-bar-btn">Open Folder</button>
+                    <button id="btnToggleTerminal" title="Toggle Terminal" class="workspace-bar-btn">Terminal</button>
+                    <button id="btnOpenVsCode" title="Open in VS Code" class="workspace-bar-btn" style="display:none;">VS Code</button>
+                    <button id="btnCloseWorkspace" class="workspace-close-btn" title="Close Workspace">✕</button>
+                </div>
+            </div>
+            
+            <div class="workspace-body-split">
+                <!-- Left Sidebar: Explorer/File Tree -->
+                <div class="workspace-tree-sidebar" id="workspaceTreeSidebar">
+                    <div class="tree-sidebar-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em;">EXPLORER</span>
+                        <div style="display: flex; gap: 4px;">
+                            <button id="btnNewFile" class="tree-header-btn" title="New File" style="display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 4px; transition: all 0.2s;">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                            </button>
+                            <button id="btnNewFolder" class="tree-header-btn" title="New Folder" style="display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 4px; transition: all 0.2s;">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="17" x2="12" y2="11"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                            </button>
+                            <button id="btnRefreshTree" class="tree-header-btn" title="Refresh" style="display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 4px; transition: all 0.2s;">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="file-tree" id="fileTree">
+                        <p style="padding: 16px; color: var(--text-muted); font-size: 11px; text-align: center;">Open a folder to see the file tree.</p>
+                    </div>
+                </div>
+
+                <!-- Center Container: Editor & Terminal -->
+                <div class="workspace-editor-container" id="workspaceEditorContainer" style="position: relative;">
+                    <!-- Workspace Empty State -->
+                    <div class="workspace-empty-state" id="workspaceEmptyState" style="display: flex; align-items: center; justify-content: center; height: 100%; width: 100%;">
+                        <div style="text-align: center; max-width: 400px; padding: 40px; display: flex; flex-direction: column; align-items: center;">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--accent); margin-bottom: 16px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                            <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">No project open</h2>
+                            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.5;">Choose a local folder to start editing files and running terminal commands offline.</p>
+                            <button id="btnEmptyOpenFolder" class="settings-save-btn" style="padding: 10px 20px; font-size: 13px; margin-bottom: 24px; border-radius: var(--radius-sm);">Open Folder</button>
+                            
+                            <div id="recentProjectsContainer" style="margin-top: 24px; text-align: left; border-top: 1px solid var(--surface-border); padding-top: 20px; width: 100%; display: none;">
+                                <h4 style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 12px;">Recent Projects</h4>
+                                <div id="recentProjectsList" style="display: flex; flex-direction: column; gap: 8px;">
+                                    <!-- Filled dynamically -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="file-viewer-header" id="fileViewerHeader">
+                        <span id="viewerFileName" style="font-size: 11px; font-family: 'JetBrains Mono', monospace; color: #a5b4fc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px;">No file selected</span>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <button id="btnSaveFile" style="display:none; background: var(--success); color: #000; border:none; cursor:pointer; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Save</button>
+                            <button id="btnCloseFile" style="background: transparent; border:none; color:var(--text-muted); cursor:pointer; font-size: 12px; display: none;">✕</button>
+                        </div>
+                    </div>
+                    <div class="editor-main">
+                        <textarea id="codeEditor" spellcheck="false" placeholder="// Select a file from the explorer to start editing" readonly></textarea>
+                    </div>
+
+                    <!-- Bottom Terminal Panel (hidden by default) -->
+                    <div class="workspace-terminal-panel hidden" id="workspaceTerminalPanel">
+                        <div class="terminal-header">
+                            <span class="terminal-title">TERMINAL</span>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span id="terminalStatusText" style="font-size: 11px; color: var(--text-muted);"></span>
+                                <button id="btnKillTerminal" class="terminal-btn hidden" style="color: var(--error); background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); font-size: 10px; padding: 2px 6px; border-radius: 4px; cursor: pointer;">Kill Task</button>
+                            </div>
+                        </div>
+                        <div class="terminal-body" id="workspaceTerminalBody" style="background: #000; color: #fff; font-family: var(--font-mono); font-size: 13px; flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; cursor: text;">
+                            <div id="terminalHistory">
+                                <div class="terminal-line" style="color: var(--text-muted);">Project Nana Terminal ready.</div>
+                            </div>
+                            <div class="terminal-input-line" id="terminalInputLine" style="display: flex; align-items: center; gap: 6px;">
+                                <span class="terminal-prompt" id="terminalPromptPrefix" style="color: var(--accent); font-weight: 600; white-space: nowrap;">nana-assistant@local:~$</span>
+                                <input type="text" id="terminalPromptInput" style="flex: 1; background: transparent; border: none; outline: none; color: #fff; font-family: var(--font-mono); font-size: 13px; padding: 0; margin: 0;" autocomplete="off" spellcheck="false">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Sidebar: Review Changes -->
+                <div class="workspace-review-sidebar hidden" id="workspaceReviewSidebar">
+                    <div class="review-sidebar-header">
+                        <span style="font-weight: 600; font-size: 12px; color: var(--accent);">Review Changes</span>
+                        <button id="btnCloseReview" class="workspace-close-btn" style="padding: 0 4px;" title="Close Panel">✕</button>
+                    </div>
+                    <div class="review-sidebar-body">
+                        <div class="review-file-info" id="reviewFileInfo">
+                            <span id="reviewFilePath" style="font-family: monospace; font-size: 11px; word-break: break-all;">No proposed changes</span>
+                        </div>
+                        <div class="review-diff-container" id="reviewDiffContainer">
+                            <!-- Diff lines will be injected here -->
+                        </div>
+                    </div>
+                    <div class="review-sidebar-footer">
+                        <button id="btnApplyChange" class="modal-btn modal-btn-primary" disabled>Apply</button>
+                        <button id="btnRejectChange" class="modal-btn modal-btn-secondary" disabled>Reject</button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ─── Station Page (AI Council) ────────────────────────── -->
+        <main class="station-page hidden" id="stationPage">
+            <div class="station-layout">
+                <!-- Left: Terminal Log & Input -->
+                <div class="station-main">
+                    <div class="station-header">
+                        <h2 class="station-title">⚡ Station</h2>
+                        <span class="station-subtitle">AI Council — multi-model voting</span>
+                    </div>
+                    <div class="station-log" id="stationLog">
+                        <div class="station-welcome">
+                            <div class="station-welcome-icon">⚡</div>
+                            <h3>Station — AI Council</h3>
+                            <p>Enter a prompt below. Each selected model will give its opinion sequentially, then Nana will summarize and vote on the best answer.</p>
+                            <div class="station-welcome-hints">
+                                <span>Sequential execution</span>
+                                <span>Max 3 models default</span>
+                                <span>256 token limit</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="station-input-area">
+                        <textarea id="stationInput" placeholder="Ask the council..." rows="2"></textarea>
+                        <button type="button" id="btnStationSend" class="station-send-btn" title="Send to Council">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <!-- Right: Model Selector -->
+                <div class="station-models-panel">
+                    <div class="station-models-header">
+                        <span>Council Members</span>
+                        <button type="button" id="btnStationSelectAll" class="station-select-all-btn">Select All</button>
+                    </div>
+                    <div class="station-models-list" id="stationModelsList">
+                        <p class="station-no-models">No text models found. Download models first.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- ─── Model manager panel ─────────────────────────────── -->
+        <aside class="models-panel hidden" id="modelsPanel">
+            <div class="models-panel-resize-handle" id="modelsPanelResizeHandle"></div>
+            <div class="models-panel-header">
+                <h2 style="font-size: 15px; margin: 0; font-weight: 600;">Model manager</h2>
+                <button type="button" id="btnCloseModelsPanel" class="models-panel-close" title="Close">✕</button>
+            </div>
+            <p class="models-dir-line">Folder: <code id="modelsDirDisplay">—</code></p>
+            <div class="models-panel-toolbar">
+                <button type="button" id="btnModelsRescan" class="mm-toolbar-btn">Rescan models</button>
+                <button type="button" id="btnModelsOpenFolder" class="mm-toolbar-btn mm-toolbar-btn-secondary">Open models folder</button>
+            </div>
+            <div class="models-table-wrap">
+                <table class="models-table" id="modelsTable">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>Size</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <!-- Model Downloader Section -->
+            <div class="models-downloader-section">
+                <h3 class="models-downloader-title">Download Models</h3>
+                <div id="downloaderModelsList">
+                    <!-- Filled dynamically by JavaScript -->
+                </div>
+            </div>
+        </aside>
+
+        <!-- ─── Settings page ─────────────────────────────── -->
+        <main class="settings-page hidden" id="settingsPage">
+            <header class="settings-header" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid var(--surface-border); background: rgba(10, 10, 15, 0.8); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); z-index: 10;">
+                <h1 style="font-size: 15px; font-weight: 500; color: var(--text-primary); margin: 0;">Settings</h1>
+                <button type="button" id="btnSettingsBack" style="background: transparent; border: 1px solid var(--surface-border); color: var(--text-secondary); cursor: pointer; padding: 6px 12px; border-radius: var(--radius-sm); font-size: 12px; transition: all 0.2s;">
+                    ← Back to Chat
+                </button>
+            </header>
+            
+            <div class="settings-container">
+                <!-- Model Performance Card -->
+                <div class="settings-card">
+                    <div class="settings-card-header">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        <h3>Model Performance</h3>
+                    </div>
+                    <div class="settings-card-body">
+                        <div class="settings-field">
+                            <label class="settings-label">Context Size</label>
+                            <input type="hidden" id="settingsContextSize" value="4096">
+                            <div class="settings-select" data-settings-select="settingsContextSize">
+                                <button type="button" class="settings-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                    <span class="settings-select-value">4096 tokens</span>
+                                    <svg class="settings-select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                </button>
+                                <div class="settings-select-menu hidden" role="listbox">
+                                    <button type="button" class="settings-select-option" role="option" data-value="1024" data-label="1024 tokens">
+                                        <span class="settings-option-copy"><span class="settings-option-title">1024 tokens</span></span>
+                                        <svg class="settings-option-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </button>
+                                    <button type="button" class="settings-select-option" role="option" data-value="2048" data-label="2048 tokens">
+                                        <span class="settings-option-copy"><span class="settings-option-title">2048 tokens</span></span>
+                                        <svg class="settings-option-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </button>
+                                    <button type="button" class="settings-select-option" role="option" data-value="4096" data-label="4096 tokens">
+                                        <span class="settings-option-copy"><span class="settings-option-title">4096 tokens</span><span class="settings-option-note">Recommended</span></span>
+                                        <svg class="settings-option-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </button>
+                                    <button type="button" class="settings-select-option" role="option" data-value="8192" data-label="8192 tokens">
+                                        <span class="settings-option-copy"><span class="settings-option-title">8192 tokens</span><span class="settings-option-note">Heavy</span></span>
+                                        <svg class="settings-option-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </button>
+                                    <button type="button" class="settings-select-option" role="option" data-value="16384" data-label="16384 tokens">
+                                        <span class="settings-option-copy"><span class="settings-option-title">16384 tokens</span><span class="settings-option-note">Very heavy</span></span>
+                                        <svg class="settings-option-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <span class="settings-help">The maximum context window size for the local GGUF model. Higher values require more RAM.</span>
+                        </div>
+                        <div class="settings-field">
+                            <label class="settings-label">Max Generation Tokens</label>
+                            <input type="hidden" id="settingsMaxTokens" value="512">
+                            <div class="settings-select" data-settings-select="settingsMaxTokens">
+                                <button type="button" class="settings-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                    <span class="settings-select-value">512 tokens</span>
+                                    <svg class="settings-select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                </button>
+                                <div class="settings-select-menu hidden" role="listbox">
+                                    <button type="button" class="settings-select-option" role="option" data-value="128" data-label="128 tokens">
+                                        <span class="settings-option-copy"><span class="settings-option-title">128 tokens</span></span>
+                                        <svg class="settings-option-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </button>
+                                    <button type="button" class="settings-select-option" role="option" data-value="256" data-label="256 tokens">
+                                        <span class="settings-option-copy"><span class="settings-option-title">256 tokens</span></span>
+                                        <svg class="settings-option-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </button>
+                                    <button type="button" class="settings-select-option" role="option" data-value="384" data-label="384 tokens">
+                                        <span class="settings-option-copy"><span class="settings-option-title">384 tokens</span></span>
+                                        <svg class="settings-option-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </button>
+                                    <button type="button" class="settings-select-option" role="option" data-value="512" data-label="512 tokens">
+                                        <span class="settings-option-copy"><span class="settings-option-title">512 tokens</span><span class="settings-option-note">Recommended</span></span>
+                                        <svg class="settings-option-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </button>
+                                    <button type="button" class="settings-select-option" role="option" data-value="768" data-label="768 tokens">
+                                        <span class="settings-option-copy"><span class="settings-option-title">768 tokens</span></span>
+                                        <svg class="settings-option-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </button>
+                                    <button type="button" class="settings-select-option" role="option" data-value="1024" data-label="1024 tokens">
+                                        <span class="settings-option-copy"><span class="settings-option-title">1024 tokens</span><span class="settings-option-note">Heavy</span></span>
+                                        <svg class="settings-option-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <span class="settings-help">The maximum number of tokens to generate in a single response.</span>
+                        </div>
+                        <div class="settings-field">
+                            <label class="settings-label">Chat History Limit</label>
+                            <input type="number" id="settingsHistoryLimit" min="1" max="50" class="settings-control" placeholder="6" value="6">
+                            <span class="settings-help">The number of recent messages sent to the model for conversation memory.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Memory Card -->
+                <div class="settings-card">
+                    <div class="settings-card-header">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        <h3>Memory</h3>
+                    </div>
+                    <div class="settings-card-body">
+                        <div class="memory-info-box">
+                            <p>Nana learns useful stable details naturally from chat, like your name, hobbies, projects, and preferences. Everything stays local.</p>
+                        </div>
+                        <div class="memory-actions">
+                            <button type="button" id="btnViewMemory" class="settings-secondary-btn">View Memory</button>
+                            <button type="button" id="btnClearMemory" class="settings-secondary-btn settings-danger-btn">Clear Memory</button>
+                        </div>
+                        <div id="memoryPreview" class="memory-preview hidden" aria-live="polite"></div>
+                    </div>
+                </div>
+
+                <!-- About Nana Card -->
+                <div class="settings-card">
+                    <div class="settings-card-header">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                        <h3>About Nana</h3>
+                    </div>
+                    <div class="settings-card-body">
+                        <div class="about-info">
+                            <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px; color: var(--accent);">Project Nana v1.0</div>
+                            <p style="margin: 0; font-size: 13px; color: var(--text-secondary); line-height: 1.4;">
+                                A warm, playful local AI desktop assistant running offline GGUF models on your machine.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="settings-actions">
+                    <button type="button" id="btnSaveSettings" class="settings-save-btn">Save Configuration</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/chat.js"></script>
+    <script src="/static/js/workspace.js"></script>
+    <script src="/static/js/models_manager.js"></script>
+    <script src="/static/js/settings_manager.js"></script>
+    <script src="/static/js/station.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

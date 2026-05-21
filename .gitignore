@@ -1,0 +1,12 @@
+node_modules/
+dist/
+backend/venv/
+venv/
+models/
+*.gguf
+*.part
+*.tmp
+data/
+.env
+__pycache__/
+*.pyc
