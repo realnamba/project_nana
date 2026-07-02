@@ -4,7 +4,9 @@
   "description": "Local AI assistant with GGUF models (llama.cpp)",
   "main": "main.js",
   "scripts": {
+    "dev": "electron .",
     "desktop:dev": "electron .",
+    "doctor": "node scripts/doctor.js",
     "desktop:build": "electron-builder --win portable"
   },
   "build": {

@@ -76,18 +76,23 @@ def _get_safe_path(target_path: str) -> Path:
         raise HTTPException(status_code=400, detail="No active workspace connected.")
     
     try:
-        # resolve() makes it absolute and resolves symlinks/..
-        # We also need to remove leading slashes from target_path if any, so it's treated as relative
         clean_target = target_path.lstrip("/\\")
+        # Strip drive letters on Windows if they are present
+        if len(clean_target) > 1 and clean_target[1] == ":":
+            clean_target = clean_target[2:].lstrip("/\\")
+
         full_path = (ACTIVE_WORKSPACE / clean_target).resolve()
-        
         active_res = ACTIVE_WORKSPACE.resolve()
-        try:
-            full_path.relative_to(active_res)
-        except ValueError:
+        
+        if not full_path.is_relative_to(active_res) and full_path != active_res:
             raise HTTPException(status_code=403, detail="Path traversal detected. Access denied.")
-        if full_path.is_symlink():
-            raise HTTPException(status_code=403, detail="Symlinks are not allowed in workspace file operations.")
+            
+        # Verify no symlinks exist in the path tree to prevent escapes
+        current = ACTIVE_WORKSPACE / clean_target
+        while current != ACTIVE_WORKSPACE:
+            if current.is_symlink():
+                raise HTTPException(status_code=403, detail="Symlinks are not allowed in workspace file operations.")
+            current = current.parent
             
         return full_path
     except HTTPException:
@@ -126,15 +131,12 @@ async def open_workspace(request: OpenWorkspaceRequest):
     
     if not path.exists() or not path.is_dir():
         raise HTTPException(status_code=404, detail="Directory not found or is not a directory.")
+    project_root = APP_DIR.resolve()
+    if not path.is_relative_to(project_root) and path != project_root:
+        raise HTTPException(status_code=403, detail="Access denied. Refusing to open a workspace outside the configured project directory.")
     if path.is_symlink():
         raise HTTPException(status_code=403, detail="Symlink workspaces are not allowed.")
-
-    anchor = Path(path.anchor).resolve()
-    home = Path.home().resolve()
-    if path == anchor or path == home or path.name.lower() in PROTECTED_WORKSPACE_NAMES:
-        raise HTTPException(status_code=403, detail="Refusing to open a broad or system workspace path.")
-    if APP_DIR.resolve() in path.parents or path == APP_DIR.resolve():
-        logger.info("Opening Nana project workspace.")
+    logger.info("Opening Nana project workspace.")
         
     ACTIVE_WORKSPACE = path
     logger.info(f"Workspace connected: {ACTIVE_WORKSPACE}")

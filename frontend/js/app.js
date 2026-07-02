@@ -6,6 +6,7 @@
 // ─── State ───────────────────────────────────────────────────────────────────
 let currentConversationId = null;
 let pendingScreenshot = null;  // base64 string of attached screenshot
+let selectedCouncilModels = [];
 
 // ─── DOM References ──────────────────────────────────────────────────────────
 const messageInput = document.getElementById('messageInput');
@@ -22,6 +23,7 @@ const statusDot = document.querySelector('.status-dot');
 const statusText = document.querySelector('.status-text');
 const imageInput = document.getElementById('imageInput');
 const ggufInput = document.getElementById('ggufInput');
+const chkCouncilMode = document.getElementById('chkCouncilMode');
 
 // Model Picker DOM
 const btnModelSelect = document.getElementById('btnModelSelect');
@@ -160,6 +162,22 @@ function setupEventListeners() {
         }
     });
 
+    if (chkCouncilMode) {
+        chkCouncilMode.addEventListener('change', () => {
+            const isCouncil = chkCouncilMode.checked;
+            if (isCouncil) {
+                if (currentSelectedModel && !selectedCouncilModels.includes(currentSelectedModel)) {
+                    selectedCouncilModels = [currentSelectedModel];
+                }
+                updateCouncilModelText();
+            } else {
+                selectedCouncilModels = [];
+                selectModel(currentSelectedModel);
+            }
+            renderModelList(modelSearchInput ? modelSearchInput.value : '');
+        });
+    }
+
     // Model Picker Events
     if (btnModelSelect) {
         btnModelSelect.addEventListener('click', (e) => {
@@ -269,10 +287,7 @@ async function sendMessage() {
 
     const displayMessage = message || '📸 Analyze this screenshot';
 
-    if (window.activeView === 'station' && window.Station && typeof window.Station.handleChatSend === 'function') {
-        await sendStationMessage(displayMessage);
-        return;
-    }
+
 
     // Show user message in chat
     ChatUI.addMessage('user', displayMessage, pendingScreenshot);
@@ -286,11 +301,16 @@ async function sendMessage() {
     const stream = ChatUI.startStream();
 
     // Build request
+    const isCouncil = chkCouncilMode && chkCouncilMode.checked;
     const params = {
         message: displayMessage,
         conversation_id: currentConversationId,
         model: currentSelectedModel
     };
+    if (isCouncil) {
+        params.council_mode = true;
+        params.models = selectedCouncilModels.length > 0 ? selectedCouncilModels : [currentSelectedModel];
+    }
     
     if (window.Workspace) {
         const ctx = Workspace.getContextForAI();
@@ -308,8 +328,8 @@ async function sendMessage() {
     await NanaAPI.chat(
         params,
         // onToken
-        (token) => {
-            stream.append(token);
+        (token, model) => {
+            stream.append(token, model);
         },
         // onDone
         (convId) => {
@@ -508,6 +528,20 @@ async function loadModels() {
     }
 }
 
+function updateCouncilModelText() {
+    if (selectedModelText) {
+        if (selectedCouncilModels.length === 0) {
+            selectedModelText.innerHTML = `<span style="color:var(--text-muted);">No models selected</span>`;
+        } else if (selectedCouncilModels.length === 1) {
+            const m = availableModelsList.find(x => x.id === selectedCouncilModels[0]);
+            const name = m ? m.name : selectedCouncilModels[0];
+            selectedModelText.innerHTML = `${escapeHtml(name)} <span title="Council Mode Active">👥</span>`;
+        } else {
+            selectedModelText.innerHTML = `${selectedCouncilModels.length} models selected <span title="Council Mode Active">👥</span>`;
+        }
+    }
+}
+
 function renderModelList(filter = '') {
     if (!modelPickerList) return;
     modelPickerList.innerHTML = '';
@@ -516,6 +550,8 @@ function renderModelList(filter = '') {
     const filtered = availableModelsList.filter(
         (m) => m.name.toLowerCase().includes(term) || m.id.toLowerCase().includes(term)
     );
+
+    const isCouncil = chkCouncilMode && chkCouncilMode.checked;
 
     if (filtered.length === 0) {
         modelPickerList.innerHTML =
@@ -534,8 +570,12 @@ function renderModelList(filter = '') {
             ? '<span style="background:var(--accent);color:#fff;padding:2px 4px;border-radius:4px;font-size:9px;margin-left:4px;">VISION</span>'
             : '<span style="background:var(--accent);color:#fff;padding:2px 4px;border-radius:4px;font-size:9px;margin-left:4px;">GGUF</span>';
 
+        const isActive = isCouncil 
+            ? selectedCouncilModels.includes(modelObj.id)
+            : modelObj.id === currentSelectedModel;
+
         const el = document.createElement('div');
-        el.className = `model-picker-item ${modelObj.id === currentSelectedModel ? 'active' : ''}`;
+        el.className = `model-picker-item ${isActive ? 'active' : ''}`;
         el.innerHTML = `
             <div class="model-item-info">
                 <span class="model-item-name">${escapeHtml(displayName)} ${runtimeTag}</span>
@@ -544,9 +584,21 @@ function renderModelList(filter = '') {
             <svg class="model-item-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
         `;
 
-        el.addEventListener('click', () => {
-            selectModel(modelObj.id);
-            modelPickerPopover.classList.add('hidden');
+        el.addEventListener('click', (e) => {
+            if (isCouncil) {
+                e.stopPropagation(); // Keep popover open
+                const idx = selectedCouncilModels.indexOf(modelObj.id);
+                if (idx > -1) {
+                    selectedCouncilModels.splice(idx, 1);
+                } else {
+                    selectedCouncilModels.push(modelObj.id);
+                }
+                updateCouncilModelText();
+                renderModelList(modelSearchInput ? modelSearchInput.value : '');
+            } else {
+                selectModel(modelObj.id);
+                modelPickerPopover.classList.add('hidden');
+            }
         });
 
         modelPickerList.appendChild(el);
@@ -647,7 +699,6 @@ window.setView = function(view) {
     const settingsPage = document.getElementById('settingsPage');
     const modelsPanel = document.getElementById('modelsPanel');
     const workspacePanel = document.getElementById('workspacePanel');
-    const stationPage = document.getElementById('stationPage');
 
     // Default: hide everything
     if (chatArea) chatArea.classList.add('hidden');
@@ -660,13 +711,11 @@ window.setView = function(view) {
         }
     }
     if (workspacePanel) workspacePanel.classList.add('hidden');
-    if (stationPage) stationPage.classList.add('hidden');
 
     // Remove active styles from sidebar buttons
     document.getElementById('btnToggleSettings')?.classList.remove('active');
     document.getElementById('btnToggleModels')?.classList.remove('active');
     document.getElementById('btnToggleWorkspace')?.classList.remove('active');
-    document.getElementById('btnToggleStation')?.classList.remove('active');
 
     if (view === "chat") {
         if (chatArea) chatArea.classList.remove('hidden');
@@ -695,17 +744,5 @@ window.setView = function(view) {
             }
         }
         document.getElementById('btnToggleWorkspace')?.classList.add('active');
-    } else if (view === "station") {
-        if (chatArea) {
-            chatArea.classList.remove('hidden');
-            chatArea.classList.add('station-mode');
-        }
-        if (stationPage) {
-            stationPage.classList.remove('hidden');
-            if (window.Station && typeof window.Station.onActivate === 'function') {
-                window.Station.onActivate();
-            }
-        }
-        document.getElementById('btnToggleStation')?.classList.add('active');
     }
 };

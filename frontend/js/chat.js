@@ -114,27 +114,58 @@ const ChatUI = {
     startStream() {
         this.isStreaming = true;
         const textEl = this.addMessage('assistant', '');
-
+ 
         // Show thinking dots initially
         textEl.innerHTML = '<div class="thinking-dots"><span></span><span></span><span></span></div>';
         let rawContent = '';
         let firstToken = true;
-
+ 
         return {
             /** Append a token to the stream */
-            append: (token) => {
+            append: (token, modelName) => {
                 if (firstToken) {
                     textEl.innerHTML = '';
                     firstToken = false;
                 }
                 rawContent += token;
-                textEl.innerHTML = this.formatMarkdown(rawContent);
+                
+                if (modelName) {
+                    let modelSec = textEl.querySelector(`[data-model="${modelName}"]`);
+                    if (!modelSec) {
+                        modelSec = document.createElement('div');
+                        modelSec.setAttribute('data-model', modelName);
+                        modelSec.className = 'council-model-section';
+                        modelSec.style.cssText = 'margin-bottom: 20px; border-left: 2px solid var(--accent); padding-left: 10px;';
+ 
+                        const chip = document.createElement('div');
+                        chip.className = 'council-model-chip';
+                        chip.style.cssText = 'display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 12px; background: rgba(124, 106, 239, 0.15); color: var(--accent); margin-bottom: 6px;';
+                        chip.textContent = modelName;
+ 
+                        const contentDiv = document.createElement('div');
+                        contentDiv.className = 'council-model-content';
+                        contentDiv.style.cssText = 'color: var(--text-primary); line-height: 1.5;';
+ 
+                        modelSec.appendChild(chip);
+                        modelSec.appendChild(contentDiv);
+                        textEl.appendChild(modelSec);
+                    }
+                    
+                    const contentDiv = modelSec.querySelector('.council-model-content');
+                    if (contentDiv) {
+                        let text = contentDiv.getAttribute('data-raw') || '';
+                        text += token;
+                        contentDiv.setAttribute('data-raw', text);
+                        contentDiv.innerHTML = this.formatMarkdown(text);
+                    }
+                } else {
+                    textEl.innerHTML = this.formatMarkdown(rawContent);
+                }
                 this.scrollToBottom();
             },
             /** Finish the stream */
             finish: () => {
                 this.isStreaming = false;
-                textEl.innerHTML = this.formatMarkdown(rawContent);
                 this.scrollToBottom();
                 return rawContent;
             },

@@ -6,6 +6,32 @@ const http = require('http');
 
 let mainWindow;
 let backendProcess;
+let apiToken = null;
+const { spawnSync } = require('child_process');
+
+function verifyVenv(candidate) {
+    console.log(`[Nana] Verifying venv at ${candidate.pythonExe} ...`);
+    if (!fs.existsSync(candidate.pythonExe)) {
+        const errMsg = `Virtual environment Python executable is missing. Checked: ${candidate.pythonExe}`;
+        console.error(`[Nana] venv check: FAILED (${errMsg})`);
+        throw new Error(errMsg + " Please run setup.ps1 to create the environment.");
+    }
+    
+    const result = spawnSync(candidate.pythonExe, ['-c', 'import sys'], { timeout: 3000 });
+    if (result.status !== 0 || result.error) {
+        let details = "";
+        if (result.status === 103) {
+            details = "Exit code 103: Base Python interpreter missing/moved";
+        } else if (result.error) {
+            details = result.error.message;
+        } else {
+            details = `Exit code ${result.status}`;
+        }
+        console.error(`[Nana] venv check: FAILED (${details})`);
+        throw new Error(`Python virtual environment is broken or not runnable (${details}). Please run setup.ps1 to repair your environment.`);
+    }
+    console.log("[Nana] venv check: OK");
+}
 
 const BACKEND_PORT = 8777;
 const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`;
@@ -76,6 +102,10 @@ ipcMain.handle('nana:get-data-dir', () => {
     return getNanaDataDir();
 });
 
+ipcMain.handle('nana:get-token', () => {
+    return apiToken;
+});
+
 ipcMain.handle('nana:select-folder', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
         properties: ['openDirectory']
@@ -97,7 +127,7 @@ function createWindow() {
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
-            sandbox: false,
+            sandbox: true,
             webSecurity: true,
             allowRunningInsecureContent: false,
             preload: path.join(__dirname, 'preload.js'),
@@ -118,6 +148,7 @@ function startBackend() {
         let backend;
         try {
             backend = findBackendDir();
+            verifyVenv(backend);
         } catch (e) {
             reject(e);
             return;
@@ -125,6 +156,7 @@ function startBackend() {
 
         const nanaDataDir = getNanaDataDir();
 
+        console.log("[Nana] Spawning backend process ...");
         // Increase timeout for cold starts in portable env
         backendProcess = spawn(backend.pythonExe, [backend.runScript], {
             cwd: backend.backendDir,
@@ -142,6 +174,12 @@ function startBackend() {
         };
 
         backendProcess.stdout.on('data', (data) => {
+            const line = data.toString();
+            const match = line.match(/NANA_API_TOKEN:([a-f0-9]{64})/);
+            if (match) {
+                apiToken = match[1];
+                console.log("Captured API Token from backend.");
+            }
             console.log(`Backend: ${data}`);
         });
 
@@ -153,15 +191,24 @@ function startBackend() {
             fail(new Error(`Failed to start Python backend at ${backend.pythonExe}: ${error.message}`));
         });
 
-        backendProcess.on('exit', (code) => {
+        backendProcess.on('exit', (code, signal) => {
+            console.log(`[Nana] Backend exited with code=${code} signal=${signal}`);
             if (!settled && code !== 0) {
-                fail(new Error(`Python backend exited early with code ${code}.`));
+                let msg = `Python backend exited early with code ${code}.`;
+                if (code === 103) {
+                    msg = `Python backend exited early with code 103 (Base interpreter not found). Please run setup.ps1 to repair your virtual environment.`;
+                }
+                fail(new Error(msg));
             }
         });
 
         let retries = 120; // 60 seconds (120 * 500ms)
         checkInterval = setInterval(() => {
-            http.get(`${BACKEND_URL}/api/status`, (res) => {
+            const headers = {};
+            if (apiToken) {
+                headers['X-Nana-Token'] = apiToken;
+            }
+            http.get(`${BACKEND_URL}/api/status`, { headers }, (res) => {
                 if (!settled && res.statusCode === 200) {
                     settled = true;
                     clearInterval(checkInterval);
@@ -183,11 +230,13 @@ app.whenReady().then(async () => {
         createWindow();
         mainWindow.loadURL(BACKEND_URL);
     } catch (e) {
+        console.error(`[Nana] Backend Startup FAILED: ${e.message}`);
         dialog.showErrorBox(
             'Backend Error',
             'Failed to start the Nana Python backend. Ensure the virtual environment exists and port 8777 is free.\n\nDetails: ' +
                 e.message
         );
+        console.log("[Nana] User acknowledged error, quitting.");
         app.quit();
     }
 

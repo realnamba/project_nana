@@ -6,7 +6,7 @@ const SettingsManager = {
     defaults: {
         contextSize: 4096,
         maxNewTokens: 512,
-        chatHistoryLimit: 6
+        memoryRetrievalDepth: 10
     },
 
     init() {
@@ -152,63 +152,63 @@ const SettingsManager = {
                 'settingsMaxTokens',
                 settings.maxNewTokens ?? this.defaults.maxNewTokens
             );
-
-            const historyLimitInput = document.getElementById('settingsHistoryLimit');
-            if (historyLimitInput) {
-                historyLimitInput.value = settings.chatHistoryLimit ?? this.defaults.chatHistoryLimit;
+ 
+            const depthInput = document.getElementById('settingsRetrievalDepth');
+            if (depthInput) {
+                depthInput.value = settings.memoryRetrievalDepth ?? this.defaults.memoryRetrievalDepth;
             }
-
+ 
         } catch (e) {
             console.error('Failed to load settings:', e);
         }
     },
-
+ 
     async saveAll() {
         const btnSave = document.getElementById('btnSaveSettings');
         if (!btnSave) return;
         const originalText = btnSave.textContent;
         btnSave.textContent = 'Saving...';
         btnSave.disabled = true;
-
+ 
         try {
             // Build settings payload
             const contextSizeSelect = document.getElementById('settingsContextSize');
             const maxTokensInput = document.getElementById('settingsMaxTokens');
-            const historyLimitInput = document.getElementById('settingsHistoryLimit');
-
+            const depthInput = document.getElementById('settingsRetrievalDepth');
+ 
             const settingsPayload = {
                 personaEnabled: true,
                 memoryEnabled: true
             };
             if (contextSizeSelect) settingsPayload.contextSize = parseInt(contextSizeSelect.value, 10);
             if (maxTokensInput) settingsPayload.maxNewTokens = parseInt(maxTokensInput.value, 10);
-            if (historyLimitInput) {
-                const parsed = parseInt(historyLimitInput.value, 10);
-                settingsPayload.chatHistoryLimit = Number.isFinite(parsed)
+            if (depthInput) {
+                const parsed = parseInt(depthInput.value, 10);
+                settingsPayload.memoryRetrievalDepth = Number.isFinite(parsed)
                     ? Math.min(Math.max(parsed, 1), 50)
-                    : this.defaults.chatHistoryLimit;
-                historyLimitInput.value = settingsPayload.chatHistoryLimit;
+                    : this.defaults.memoryRetrievalDepth;
+                depthInput.value = settingsPayload.memoryRetrievalDepth;
             }
-
+ 
             // Save settings
             await NanaAPI.updateSettings(settingsPayload);
-
+ 
             btnSave.textContent = 'Saved';
             btnSave.style.background = 'var(--success)';
             btnSave.style.color = '#000';
-
+ 
             setTimeout(() => {
                 btnSave.textContent = originalText;
                 btnSave.style.background = '';
                 btnSave.style.color = '';
                 btnSave.disabled = false;
             }, 1500);
-
+ 
             // Trigger status check/scan if context size or default model changed
             if (window.loadModels) {
                 window.loadModels();
             }
-
+ 
         } catch (e) {
             console.error('Failed to save settings:', e);
             alert('Failed to save settings: ' + e.message);
@@ -238,26 +238,36 @@ const SettingsManager = {
         }
     },
 
-    renderMemoryPreview(memory) {
+    renderMemoryPreview(memoryData) {
         const preview = document.getElementById('memoryPreview');
         if (!preview) return;
 
+        preview.innerHTML = '';
+
+        const facts = memoryData.facts || {};
+        const semantic = memoryData.semantic || [];
+
         const rows = [
-            ['Preferred name', memory.preferredName],
-            ['Hobbies', memory.hobbies],
-            ['Projects', memory.currentProjects],
-            ['Work / study', memory.workStudy],
-            ['Model preferences', memory.modelPreferences],
-            ['App preferences', memory.appPreferences],
-            ['Repeated goals', memory.repeatedGoals]
+            ['Preferred name', facts.preferredName],
+            ['Hobbies', facts.hobbies],
+            ['Projects', facts.currentProjects],
+            ['Work / study', facts.workStudy],
+            ['Model preferences', facts.modelPreferences],
+            ['App preferences', facts.appPreferences],
+            ['Repeated goals', facts.repeatedGoals]
         ].filter(([, value]) => value && String(value).trim());
 
-        preview.innerHTML = '';
+        // Header for profile facts
+        const titleFacts = document.createElement('h4');
+        titleFacts.style.cssText = 'font-size: 13px; font-weight: 600; color: var(--accent); margin: 0 0 10px 0; border-bottom: 1px solid var(--surface-border); padding-bottom: 4px;';
+        titleFacts.textContent = 'Structured Profile Facts';
+        preview.appendChild(titleFacts);
 
         if (!rows.length) {
             const empty = document.createElement('p');
             empty.className = 'memory-empty';
-            empty.textContent = 'No saved memory yet.';
+            empty.style.cssText = 'color: var(--text-muted); font-size: 12px; margin-bottom: 16px;';
+            empty.textContent = 'No profile facts extracted yet.';
             preview.appendChild(empty);
         } else {
             rows.forEach(([label, value]) => {
@@ -278,25 +288,53 @@ const SettingsManager = {
             });
         }
 
+        // Header for semantic vector memory summaries
+        const titleSemantic = document.createElement('h4');
+        titleSemantic.style.cssText = 'font-size: 13px; font-weight: 600; color: var(--accent); margin: 20px 0 10px 0; border-bottom: 1px solid var(--surface-border); padding-bottom: 4px;';
+        titleSemantic.textContent = 'Semantic Vector Store (Summaries & Contexts)';
+        preview.appendChild(titleSemantic);
+
+        if (!semantic.length) {
+            const empty = document.createElement('p');
+            empty.className = 'memory-empty';
+            empty.style.cssText = 'color: var(--text-muted); font-size: 12px;';
+            empty.textContent = 'No semantic summaries indexed yet.';
+            preview.appendChild(empty);
+        } else {
+            const sortedSemantic = [...semantic].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+            sortedSemantic.forEach((item) => {
+                const row = document.createElement('div');
+                row.className = 'memory-row-semantic';
+                row.style.cssText = 'margin-bottom: 12px; padding: 10px; background: rgba(255,255,255,0.02); border: 1px solid var(--surface-border); border-radius: var(--radius-sm); font-size: 12px; display: flex; flex-direction: column; gap: 4px;';
+
+                const textEl = document.createElement('div');
+                textEl.style.cssText = 'color: var(--text-primary); line-height: 1.4;';
+                textEl.textContent = item.text;
+
+                const meta = document.createElement('div');
+                meta.style.cssText = 'display: flex; gap: 12px; color: var(--text-muted); font-size: 10px; margin-top: 4px;';
+                
+                const timeStr = item.timestamp ? new Date(item.timestamp).toLocaleString() : 'N/A';
+                const typeLabel = item.type === 'summary' ? '🔄 Session Summary' : '💡 Fact Context';
+                const sessionLabel = item.source_session ? `Session: ${item.source_session.slice(0, 8)}` : '';
+
+                meta.innerHTML = `<span>${typeLabel}</span><span>${timeStr}</span>${sessionLabel ? `<span>${sessionLabel}</span>` : ''}`;
+                
+                row.appendChild(textEl);
+                row.appendChild(meta);
+                preview.appendChild(row);
+            });
+        }
+
         preview.classList.remove('hidden');
     },
 
     async clearMemory() {
-        if (!confirm('Clear Nana memory? This keeps the file but removes saved facts.')) return;
-
-        const emptyMemory = {
-            preferredName: '',
-            hobbies: '',
-            currentProjects: '',
-            workStudy: '',
-            modelPreferences: '',
-            appPreferences: '',
-            repeatedGoals: ''
-        };
+        if (!confirm('Clear Nana memory? This will remove all saved facts and semantic summaries.')) return;
 
         try {
-            await NanaAPI.updateUserMemory(emptyMemory);
-            this.renderMemoryPreview(emptyMemory);
+            await NanaAPI.clearUserMemory();
+            this.renderMemoryPreview({ facts: {}, semantic: [] });
         } catch (e) {
             console.error('Failed to clear user memory:', e);
             alert('Failed to clear memory: ' + e.message);

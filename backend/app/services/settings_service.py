@@ -19,7 +19,7 @@ _DEFAULTS: Dict[str, Any] = {
     "autoScanModels": True,
     "contextSize": 4096,
     "maxNewTokens": 512,
-    "chatHistoryLimit": 6,
+    "memoryRetrievalDepth": 10,
     "personaEnabled": True,
     "memoryEnabled": True,
 }

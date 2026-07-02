@@ -5,6 +5,44 @@
 
 const API_BASE = '';  // Same origin, no prefix needed
 
+// Intercept all fetches to automatically attach X-Nana-Token if available
+(function() {
+    const originalFetch = window.fetch;
+    let cachedToken = null;
+    
+    async function getApiToken() {
+        if (cachedToken) return cachedToken;
+        if (window.nanaDesktop && typeof window.nanaDesktop.getToken === 'function') {
+            try {
+                cachedToken = await window.nanaDesktop.getToken();
+            } catch (e) {
+                console.error("Failed to fetch API token via preload:", e);
+            }
+        }
+        return cachedToken;
+    }
+
+    window.fetch = async function(resource, options = {}) {
+        const urlStr = typeof resource === 'string' ? resource : (resource && resource.url);
+        if (urlStr && urlStr.includes('/api/')) {
+            const token = await getApiToken();
+            if (token) {
+                options.headers = options.headers || {};
+                if (options.headers instanceof Headers) {
+                    options.headers.set('X-Nana-Token', token);
+                } else if (Array.isArray(options.headers)) {
+                    if (!options.headers.some(h => h[0].toLowerCase() === 'x-nana-token')) {
+                        options.headers.push(['X-Nana-Token', token]);
+                    }
+                } else {
+                    options.headers['X-Nana-Token'] = token;
+                }
+            }
+        }
+        return originalFetch(resource, options);
+    };
+})();
+
 const NanaAPI = {
     /**
      * Send a chat message and stream the response via SSE.
@@ -44,7 +82,7 @@ const NanaAPI = {
                             if (data.done) {
                                 onDone(data.conversation_id);
                             } else if (data.token) {
-                                onToken(data.token);
+                                onToken(data.token, data.model);
                             }
                         } catch (e) {
                             // Skip malformed JSON
@@ -348,6 +386,15 @@ const NanaAPI = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(memory),
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        return resp.json();
+    },
+
+    async clearUserMemory() {
+        const resp = await fetch(`${API_BASE}/api/memory/clear`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
         });
         if (!resp.ok) throw new Error(await resp.text());
         return resp.json();

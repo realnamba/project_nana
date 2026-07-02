@@ -165,13 +165,40 @@ async def delete_conversation(conversation_id: str):
 
 @router.get("/memory/user")
 async def get_user_memory():
-    """Retrieve the lightweight user memory profile."""
+    """Retrieve user memory profile (facts + semantic memories)."""
     from app.services.user_memory_service import user_memory
-    return user_memory.get_memory()
+    from app.services.lance_service import lance_service
+    import logging
+    logger = logging.getLogger("nana")
+    
+    facts = await user_memory.get_memory_async()
+    semantic_list = []
+    try:
+        if lance_service._table is not None:
+            res = lance_service._table.search().limit(100).to_list()
+            for r in res:
+                r.pop("vector", None)
+                semantic_list.append(r)
+    except Exception as e:
+        logger.error("Failed to read semantic list: %s", e)
+        
+    return {
+        "facts": facts,
+        "semantic": semantic_list
+    }
 
 
 @router.post("/memory/user")
 async def update_user_memory(data: dict):
     """Update the lightweight user memory profile."""
     from app.services.user_memory_service import user_memory
-    return user_memory.update_memory(data)
+    facts = await user_memory.update_memory_async(data)
+    return {"facts": facts}
+
+
+@router.post("/memory/clear")
+async def clear_all_memories():
+    """Clear all memories from SQLite and LanceDB."""
+    from app.services.user_memory_service import user_memory
+    await user_memory.clear_memory_async()
+    return {"ok": True}

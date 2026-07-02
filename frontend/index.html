@@ -35,10 +35,6 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                     <span>Workspace</span>
                 </button>
-                <button type="button" class="btn-toggle-station" id="btnToggleStation" title="Station — AI Council">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                    <span>Station</span>
-                </button>
                 <button type="button" class="btn-toggle-models" id="btnToggleModels" title="Model manager">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
                     <span>Models</span>
@@ -142,6 +138,10 @@
                                     </div>
                                 </div>
                             </div>
+                            <label class="council-mode-toggle-container" title="Council Mode (Run multiple models inline)" style="display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; font-size: 12px; color: var(--text-secondary); background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 8px; border-radius: var(--radius-sm); transition: all 0.2s; margin-left: 8px;">
+                                <input type="checkbox" id="chkCouncilMode" style="cursor: pointer; accent-color: var(--accent);">
+                                <span>Council Mode</span>
+                            </label>
                         </div>
                         <div class="composer-tools-right">
                             <button class="btn-send" id="btnSend" title="Send (Enter)">
@@ -441,9 +441,9 @@
                             <span class="settings-help">The maximum number of tokens to generate in a single response.</span>
                         </div>
                         <div class="settings-field">
-                            <label class="settings-label">Chat History Limit</label>
-                            <input type="number" id="settingsHistoryLimit" min="1" max="50" class="settings-control" placeholder="6" value="6">
-                            <span class="settings-help">The number of recent messages sent to the model for conversation memory.</span>
+                            <label class="settings-label">Memory Retrieval Depth</label>
+                            <input type="number" id="settingsRetrievalDepth" min="1" max="50" class="settings-control" placeholder="10" value="10">
+                            <span class="settings-help">Recall up to N relevant memories per message (controls semantic memory retrieval breadth).</span>
                         </div>
                     </div>
                 </div>
@@ -457,6 +457,7 @@
                     <div class="settings-card-body">
                         <div class="memory-info-box">
                             <p>Nana learns useful stable details naturally from chat, like your name, hobbies, projects, and preferences. Everything stays local.</p>
+                            <p style="font-size: 11px; margin-top: 8px; color: var(--text-muted);">Stored locally in data/nana.db and data/memory.lance — never sent anywhere.</p>
                         </div>
                         <div class="memory-actions">
                             <button type="button" id="btnViewMemory" class="settings-secondary-btn">View Memory</button>
@@ -496,7 +497,6 @@
     <script src="/static/js/workspace.js"></script>
     <script src="/static/js/models_manager.js"></script>
     <script src="/static/js/settings_manager.js"></script>
-    <script src="/static/js/station.js"></script>
     <script src="/static/js/app.js"></script>
 </body>
 </html>

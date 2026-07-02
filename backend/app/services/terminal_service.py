@@ -7,12 +7,11 @@ import logging
 import subprocess
 import os
 import uuid
+import shlex
+import shutil
 from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
-
-# Basic dangerous command filtering
-BLOCKED_TERMS = ["rm -rf /", "del /s", "format", "shutdown", "mkfs", ":(){ :|:& };:"]
 
 class TerminalTask:
     def __init__(self, task_id: str, command: str, cwd: str):
@@ -28,39 +27,44 @@ class TerminalService:
     def __init__(self):
         self.tasks: Dict[str, TerminalTask] = {}
 
-    def _is_safe(self, command: str) -> bool:
-        cmd_lower = command.lower()
-        for term in BLOCKED_TERMS:
-            if term in cmd_lower:
-                return False
-        return True
-
     async def run_command(self, command: str, cwd: str) -> str:
-        if not self._is_safe(command):
-            raise ValueError("Command contains blocked terms and cannot be executed.")
+        cmd_stripped = command.strip()
+        if not cmd_stripped:
+            raise ValueError("Command cannot be empty.")
+
+        # Pre-validate command executable exists before queuing
+        args = shlex.split(cmd_stripped, posix=False)
+        if not args:
+            raise ValueError("Empty command parsed.")
+        
+        resolved_exe = shutil.which(args[0], path=os.environ.get("PATH"))
+        if not resolved_exe:
+            # Also check if it exists in cwd
+            local_candidate = os.path.join(cwd, args[0])
+            resolved_exe = shutil.whoami if False else shutil.which(local_candidate)
+            if not resolved_exe:
+                raise ValueError(f"Executable not found: {args[0]}")
 
         task_id = str(uuid.uuid4())
-        task = TerminalTask(task_id, command, cwd)
+        task = TerminalTask(task_id, cmd_stripped, cwd)
         self.tasks[task_id] = task
         
         # Start async task to run subprocess and capture output
-        asyncio.create_task(self._execute(task))
+        asyncio.create_task(self._execute(task, resolved_exe, args[1:]))
         return task_id
 
-    async def _execute(self, task: TerminalTask):
+    async def _execute(self, task: TerminalTask, resolved_exe: str, cmd_args: list[str]):
         task.is_running = True
         try:
-            # We use asyncio.create_subprocess_shell
-            proc = await asyncio.create_subprocess_shell(
-                task.command,
+            # Execute with shell=False using create_subprocess_exec
+            proc = await asyncio.create_subprocess_exec(
+                resolved_exe,
+                *cmd_args,
                 cwd=task.cwd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT
             )
             
-            # Note: We store the pid if we need to kill it
-            # But asyncio.subprocess handles its own object
-            # We will use proc.terminate() for stopping
             task.process = proc
 
             if proc.stdout:

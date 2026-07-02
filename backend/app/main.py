@@ -6,9 +6,13 @@ and serves the frontend static files.
 """
 
 import logging
+import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlparse
+
+API_TOKEN = secrets.token_hex(32)
+print(f"NANA_API_TOKEN:{API_TOKEN}", flush=True)
 
 # pyrefly: ignore [missing-import]
 from fastapi import FastAPI
@@ -19,7 +23,7 @@ from fastapi.staticfiles import StaticFiles
 # pyrefly: ignore [missing-import]
 from fastapi.responses import FileResponse
 
-from app.routers import chat, screenshot, memory, terminal, workspace, models, station
+from app.routers import chat, screenshot, memory, terminal, workspace, models
 from app.services.llama_runtime import llama_runtime
 from app.services.model_manager import model_manager
 from app.services.memory_service import memory as memory_svc
@@ -106,16 +110,28 @@ app.add_middleware(
 
 @app.middleware("http")
 async def reject_untrusted_origins(request, call_next):
-    """Block cross-site writes to Nana's unauthenticated local API."""
-    if request.method not in {"GET", "HEAD", "OPTIONS"} and request.url.path.startswith("/api/"):
-        origin = request.headers.get("origin")
-        if origin:
+    """Block cross-site writes and validate the security token for Nana's local API."""
+    if request.url.path.startswith("/api/"):
+        # 1. CORS / Origin Check for mutating methods
+        if request.method not in {"GET", "HEAD", "OPTIONS"}:
+            origin = request.headers.get("origin")
+            if not origin:
+                from fastapi.responses import JSONResponse
+                return JSONResponse({"detail": "Missing Origin header for mutating API request."}, status_code=403)
+            
             parsed = urlparse(origin)
             normalized = f"{parsed.scheme}://{parsed.netloc}"
             if normalized not in ALLOWED_ORIGINS:
                 from fastapi.responses import JSONResponse
-
                 return JSONResponse({"detail": "Untrusted request origin."}, status_code=403)
+        
+        # 2. Token Authentication Check (for all methods except OPTIONS)
+        if request.method != "OPTIONS":
+            token_header = request.headers.get("x-nana-token")
+            if not token_header or token_header != API_TOKEN:
+                from fastapi.responses import JSONResponse
+                return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+                
     return await call_next(request)
 
 app.include_router(chat.router)
@@ -124,7 +140,6 @@ app.include_router(memory.router)
 app.include_router(terminal.router)
 app.include_router(workspace.router)
 app.include_router(models.router)
-app.include_router(station.router)
 
 
 @app.get("/api/status")

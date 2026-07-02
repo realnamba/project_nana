@@ -11,4 +11,5 @@ contextBridge.exposeInMainWorld('nanaDesktop', {
     openModelsFolder: (folderPath) => ipcRenderer.invoke('nana:open-models-folder', folderPath),
     selectFolder: () => ipcRenderer.invoke('nana:select-folder'),
     getDataDir: () => ipcRenderer.invoke('nana:get-data-dir'),
+    getToken: () => ipcRenderer.invoke('nana:get-token'),
 });

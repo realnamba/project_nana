@@ -31,6 +31,8 @@ async def chat(request: ChatRequest):
                 conversation_id=request.conversation_id,
                 image_b64=request.image_base64,
                 model=request.model,
+                models=request.models,
+                council_mode=request.council_mode,
                 workspace_context=request.workspace_context,
             ):
                 yield {

@@ -7,3 +7,6 @@ Pillow>=10.0
 python-dotenv>=1.0
 mss>=9.0
 llama-cpp-python>=0.3.0
+lancedb>=0.6.0
+sentence-transformers>=2.2.0
+

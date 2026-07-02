@@ -37,7 +37,7 @@ class MemoryService:
                 created_at  TEXT NOT NULL,
                 updated_at  TEXT NOT NULL
             );
-
+ 
             CREATE TABLE IF NOT EXISTS messages (
                 id              TEXT PRIMARY KEY,
                 conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
@@ -48,7 +48,13 @@ class MemoryService:
                 model_used      TEXT,
                 created_at      TEXT NOT NULL
             );
-
+ 
+            CREATE TABLE IF NOT EXISTS user_facts (
+                key         TEXT PRIMARY KEY,
+                value       TEXT NOT NULL,
+                updated_at  TEXT NOT NULL
+            );
+ 
             CREATE INDEX IF NOT EXISTS idx_messages_conv
                 ON messages(conversation_id, created_at);
         """)
@@ -182,6 +188,28 @@ class MemoryService:
             }
             for r in rows
         ]
+
+    async def get_all_facts(self) -> dict[str, str]:
+        if not self._db:
+            return {}
+        rows = await self._db.execute_fetchall("SELECT key, value FROM user_facts")
+        return {r[0]: r[1] for r in rows}
+
+    async def update_fact(self, key: str, value: str):
+        if not self._db:
+            return
+        now = datetime.now(timezone.utc).isoformat()
+        await self._db.execute(
+            "INSERT OR REPLACE INTO user_facts (key, value, updated_at) VALUES (?, ?, ?)",
+            (key, value, now)
+        )
+        await self._db.commit()
+
+    async def clear_all_facts(self):
+        if not self._db:
+            return
+        await self._db.execute("DELETE FROM user_facts")
+        await self._db.commit()
 
     async def delete_conversation(self, conversation_id: str):
         """Delete a conversation and all its messages."""
